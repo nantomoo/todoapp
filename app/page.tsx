@@ -1,74 +1,90 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 type Todo = {
   id: string;
   text: string;
   completed: boolean;
-  createdAt: number;
+  createdAt: string;
 };
 
 type Filter = "all" | "active" | "completed";
 
-const STORAGE_KEY = "todos";
-
-function generateId() {
-  return Math.random().toString(36).slice(2) + Date.now().toString(36);
-}
-
-function loadTodos(): Todo[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveTodos(todos: Todo[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
-}
-
 export default function Home() {
+  const router = useRouter();
+  const [username, setUsername] = useState<string | null>(null);
   const [todos, setTodos] = useState<Todo[]>([]);
   const [input, setInput] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [mounted, setMounted] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // 認証チェック & Todo 取得
   useEffect(() => {
-    setTodos(loadTodos());
-    setMounted(true);
-  }, []);
+    (async () => {
+      const meRes = await fetch("/api/auth/me");
+      if (!meRes.ok) {
+        router.replace("/login");
+        return;
+      }
+      const { username } = await meRes.json();
+      setUsername(username);
 
-  useEffect(() => {
-    if (mounted) saveTodos(todos);
-  }, [todos, mounted]);
+      const todosRes = await fetch("/api/todos");
+      if (todosRes.ok) {
+        setTodos(await todosRes.json());
+      }
+      setMounted(true);
+    })();
+  }, [router]);
 
-  const addTodo = () => {
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.replace("/login");
+  };
+
+  const addTodo = async () => {
     const text = input.trim();
     if (!text) return;
-    setTodos((prev) => [
-      { id: generateId(), text, completed: false, createdAt: Date.now() },
-      ...prev,
-    ]);
-    setInput("");
-    inputRef.current?.focus();
+    const res = await fetch("/api/todos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    if (res.ok) {
+      const todo = await res.json();
+      setTodos((prev) => [todo, ...prev]);
+      setInput("");
+      inputRef.current?.focus();
+    }
   };
 
-  const toggleTodo = (id: string) => {
-    setTodos((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
+  const toggleTodo = async (id: string, completed: boolean) => {
+    const res = await fetch(`/api/todos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ completed: !completed }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setTodos((prev) => prev.map((t) => (t.id === id ? updated : t)));
+    }
+  };
+
+  const deleteTodo = async (id: string) => {
+    const res = await fetch(`/api/todos/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setTodos((prev) => prev.filter((t) => t.id !== id));
+    }
+  };
+
+  const clearCompleted = async () => {
+    const completed = todos.filter((t) => t.completed);
+    await Promise.all(
+      completed.map((t) => fetch(`/api/todos/${t.id}`, { method: "DELETE" }))
     );
-  };
-
-  const deleteTodo = (id: string) => {
-    setTodos((prev) => prev.filter((t) => t.id !== id));
-  };
-
-  const clearCompleted = () => {
     setTodos((prev) => prev.filter((t) => !t.completed));
   };
 
@@ -87,14 +103,27 @@ export default function Home() {
     { key: "completed", label: "完了済み" },
   ];
 
+  if (!mounted) return null;
+
   return (
     <main className="min-h-screen flex flex-col items-center justify-start pt-16 pb-24 px-4">
       {/* Header */}
-      <div className="w-full max-w-lg mb-8 text-center">
-        <h1 className="text-3xl font-semibold tracking-tight text-stone-800">
-          ToDo
-        </h1>
-        <p className="text-sm text-stone-400 mt-1">タスクを整理しよう</p>
+      <div className="w-full max-w-lg mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight text-stone-800">
+            ToDo
+          </h1>
+          <p className="text-sm text-stone-400 mt-1">タスクを整理しよう</p>
+        </div>
+        <div className="flex flex-col items-end gap-1 pt-1">
+          <span className="text-xs text-stone-500">{username}</span>
+          <button
+            onClick={handleLogout}
+            className="text-xs text-stone-400 hover:text-rose-400 transition-colors"
+          >
+            ログアウト
+          </button>
+        </div>
       </div>
 
       {/* Input area */}
@@ -143,8 +172,8 @@ export default function Home() {
 
       {/* Todo list */}
       <div className="w-full max-w-lg flex flex-col gap-2">
-        {!mounted ? null : filtered.length === 0 ? (
-          <div className="text-center py-16 text-stone-300 text-sm animate-fade-in">
+        {filtered.length === 0 ? (
+          <div className="text-center py-16 text-stone-300 text-sm">
             {filter === "completed"
               ? "完了したタスクはありません"
               : filter === "active"
@@ -155,14 +184,13 @@ export default function Home() {
           filtered.map((todo) => (
             <div
               key={todo.id}
-              className="group flex items-center gap-3 bg-white border border-stone-200 rounded-2xl px-4 py-3.5 shadow-sm hover:shadow-md transition-all animate-slide-in"
+              className="group flex items-center gap-3 bg-white border border-stone-200 rounded-2xl px-4 py-3.5 shadow-sm hover:shadow-md transition-all"
             >
-              {/* Checkbox */}
               <button
-                onClick={() => toggleTodo(todo.id)}
+                onClick={() => toggleTodo(todo.id, todo.completed)}
                 className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                   todo.completed
-                    ? "bg-emerald-400 border-emerald-400 animate-check-pop"
+                    ? "bg-emerald-400 border-emerald-400"
                     : "border-stone-300 hover:border-stone-400"
                 }`}
                 aria-label={todo.completed ? "未完了に戻す" : "完了にする"}
@@ -184,7 +212,6 @@ export default function Home() {
                 )}
               </button>
 
-              {/* Text */}
               <span
                 className={`flex-1 text-sm leading-relaxed transition-all ${
                   todo.completed
@@ -195,7 +222,6 @@ export default function Home() {
                 {todo.text}
               </span>
 
-              {/* Delete button */}
               <button
                 onClick={() => deleteTodo(todo.id)}
                 className="flex-shrink-0 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-stone-100 text-stone-300 hover:text-rose-400 transition-all"
@@ -220,9 +246,8 @@ export default function Home() {
         )}
       </div>
 
-      {/* Footer: clear completed */}
       {completedCount > 0 && (
-        <div className="w-full max-w-lg mt-4 flex justify-end animate-fade-in">
+        <div className="w-full max-w-lg mt-4 flex justify-end">
           <button
             onClick={clearCompleted}
             className="text-xs text-stone-400 hover:text-rose-400 transition-colors"

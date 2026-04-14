@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "todo-demo",
+      "runtimeExecutable": "powershell.exe",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", "C:\\Users\\hashi\\AppData\\Local\\Temp\\todo_server.ps1"
+      ],
+      "env": {
+        "TODO_ROOT": "C:\\Users\\hashi\\OneDrive\\デスクトップ\\program\\todo_20260414"
+      },
+      "port": 4321
+    }
+  ]
+}
