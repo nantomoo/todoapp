@@ -9,12 +9,15 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  username     String   @unique
-  passwordHash String
-  salt         String
-  todos        Todo[]
-  createdAt    DateTime @default(now())
+  id                   String   @id @default(cuid())
+  username             String   @unique
+  passwordHash         String
+  salt                 String
+  securityQuestion     String
+  securityAnswerHash   String
+  securityAnswerSalt   String
+  todos                Todo[]
+  createdAt            DateTime @default(now())
 
   @@map("users")
 }

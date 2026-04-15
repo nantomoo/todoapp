@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { generateSalt, hashPassword } from "@/lib/password";
 
 export async function POST(req: NextRequest) {
-  const { username, password } = await req.json();
+  const { username, password, securityQuestion, securityAnswer } = await req.json();
 
   if (!/^[a-zA-Z0-9_]{2,20}$/.test(username)) {
     return NextResponse.json(
@@ -14,6 +14,12 @@ export async function POST(req: NextRequest) {
   if (typeof password !== "string" || password.length < 8) {
     return NextResponse.json(
       { error: "パスワードは8文字以上で入力してください" },
+      { status: 400 }
+    );
+  }
+  if (!securityQuestion || !securityAnswer || securityAnswer.trim().length < 1) {
+    return NextResponse.json(
+      { error: "秘密の質問と答えを入力してください" },
       { status: 400 }
     );
   }
@@ -28,7 +34,19 @@ export async function POST(req: NextRequest) {
 
   const salt = generateSalt();
   const passwordHash = await hashPassword(password, salt);
-  await db.user.create({ data: { username, passwordHash, salt } });
+  const securityAnswerSalt = generateSalt();
+  const securityAnswerHash = await hashPassword(securityAnswer.trim().toLowerCase(), securityAnswerSalt);
+
+  await db.user.create({
+    data: {
+      username,
+      passwordHash,
+      salt,
+      securityQuestion,
+      securityAnswerHash,
+      securityAnswerSalt,
+    },
+  });
 
   return NextResponse.json({ ok: true }, { status: 201 });
 }

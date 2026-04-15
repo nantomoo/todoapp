@@ -90,15 +90,17 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="text-center text-sm text-stone-400 mt-6">
-          アカウントをお持ちでない方は{" "}
-          <Link
-            href="/register"
-            className="text-stone-700 font-medium hover:underline"
-          >
-            新規登録
+        <div className="flex flex-col items-center gap-2 mt-6">
+          <p className="text-center text-sm text-stone-400">
+            アカウントをお持ちでない方は{" "}
+            <Link href="/register" className="text-stone-700 font-medium hover:underline">
+              新規登録
+            </Link>
+          </p>
+          <Link href="/reset-password" className="text-sm text-stone-400 hover:underline">
+            パスワードをお忘れの方
           </Link>
-        </p>
+        </div>
       </div>
     </main>
   );
