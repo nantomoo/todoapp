@@ -237,18 +237,26 @@ export default function Home() {
               </button>
 
               {editingId === todo.id ? (
-                <input
-                  ref={editInputRef}
-                  type="text"
-                  value={editingText}
-                  onChange={(e) => setEditingText(e.target.value)}
-                  onBlur={() => commitEdit(todo.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") commitEdit(todo.id);
-                    if (e.key === "Escape") setEditingId(null);
-                  }}
-                  className="flex-1 text-sm text-stone-700 bg-transparent outline-none border-b border-stone-400 leading-relaxed"
-                />
+                <div className="flex-1 relative">
+                  <input
+                    ref={editInputRef}
+                    type="text"
+                    value={editingText}
+                    onChange={(e) => setEditingText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") setEditingId(null);
+                    }}
+                    className="w-full text-sm text-stone-700 bg-transparent outline-none border-b border-stone-400 leading-relaxed pb-5 pr-1"
+                  />
+                  <button
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => commitEdit(todo.id)}
+                    className="absolute bottom-0 right-0 px-2 py-0.5 bg-stone-800 text-white text-xs font-medium rounded-md hover:bg-stone-700 active:scale-95 transition-all"
+                    aria-label="編集を確定"
+                  >
+                    完了
+                  </button>
+                </div>
               ) : (
                 <span
                   onDoubleClick={() => !todo.completed && startEdit(todo)}
