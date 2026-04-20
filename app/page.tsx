@@ -19,7 +19,10 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [mounted, setMounted] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
 
   // 認証チェック & Todo 取得
   useEffect(() => {
@@ -77,6 +80,27 @@ export default function Home() {
     const res = await fetch(`/api/todos/${id}`, { method: "DELETE" });
     if (res.ok) {
       setTodos((prev) => prev.filter((t) => t.id !== id));
+    }
+  };
+
+  const startEdit = (todo: Todo) => {
+    setEditingId(todo.id);
+    setEditingText(todo.text);
+    setTimeout(() => editInputRef.current?.select(), 0);
+  };
+
+  const commitEdit = async (id: string) => {
+    const text = editingText.trim();
+    setEditingId(null);
+    if (!text || text === todos.find((t) => t.id === id)?.text) return;
+    const res = await fetch(`/api/todos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setTodos((prev) => prev.map((t) => (t.id === id ? updated : t)));
     }
   };
 
@@ -212,15 +236,31 @@ export default function Home() {
                 )}
               </button>
 
-              <span
-                className={`flex-1 text-sm leading-relaxed transition-all ${
-                  todo.completed
-                    ? "line-through text-stone-300"
-                    : "text-stone-700"
-                }`}
-              >
-                {todo.text}
-              </span>
+              {editingId === todo.id ? (
+                <input
+                  ref={editInputRef}
+                  type="text"
+                  value={editingText}
+                  onChange={(e) => setEditingText(e.target.value)}
+                  onBlur={() => commitEdit(todo.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitEdit(todo.id);
+                    if (e.key === "Escape") setEditingId(null);
+                  }}
+                  className="flex-1 text-sm text-stone-700 bg-transparent outline-none border-b border-stone-400 leading-relaxed"
+                />
+              ) : (
+                <span
+                  onDoubleClick={() => !todo.completed && startEdit(todo)}
+                  className={`flex-1 text-sm leading-relaxed transition-all select-none ${
+                    todo.completed
+                      ? "line-through text-stone-300"
+                      : "text-stone-700 cursor-text"
+                  }`}
+                >
+                  {todo.text}
+                </span>
+              )}
 
               <button
                 onClick={() => deleteTodo(todo.id)}
