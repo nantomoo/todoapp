@@ -22,7 +22,7 @@ export default function Home() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const editInputRef = useRef<HTMLInputElement>(null);
+  const editInputRef = useRef<HTMLTextAreaElement>(null);
 
   // 認証チェック & Todo 取得
   useEffect(() => {
@@ -237,25 +237,26 @@ export default function Home() {
               </button>
 
               {editingId === todo.id ? (
-                <div className="flex-1 relative">
-                  <input
+                <div className="flex-1 flex flex-col gap-1.5">
+                  <textarea
                     ref={editInputRef}
-                    type="text"
                     value={editingText}
                     onChange={(e) => setEditingText(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Escape") setEditingId(null);
                     }}
-                    className="w-full text-sm text-stone-700 bg-transparent outline-none border-b border-stone-400 leading-relaxed pb-5 pr-1"
+                    rows={2}
+                    className="w-full text-sm text-stone-700 bg-transparent outline-none border-b border-stone-400 leading-relaxed resize-none"
                   />
-                  <button
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => commitEdit(todo.id)}
-                    className="absolute bottom-0 right-0 px-2 py-0.5 bg-stone-800 text-white text-xs font-medium rounded-md hover:bg-stone-700 active:scale-95 transition-all"
-                    aria-label="編集を確定"
-                  >
-                    完了
-                  </button>
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => commitEdit(todo.id)}
+                      className="px-3 py-1 bg-stone-800 text-white text-xs font-medium rounded-lg hover:bg-stone-700 active:scale-95 transition-all"
+                      aria-label="編集を確定"
+                    >
+                      完了
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <span
